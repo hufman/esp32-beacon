@@ -1,0 +1,12 @@
+substitutions:
+  device_name: devkit1
+  use_address: 192.168.240.150
+
+esphome:
+  name: ${device_name}
+  platform: ESP32
+  board: nodemcu-32s
+
+<<: !include includes/common.yaml
+
+<<: !include includes/ble_tracker.yaml

@@ -1,0 +1,11 @@
+# Include remote flash
+ota:
+
+# Enable logging
+logger:
+
+# Connect to wifi
+<<: !include wifi.yaml
+
+# Enable Home Assistant API
+<<: !include mqtt.yaml

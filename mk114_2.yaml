@@ -1,0 +1,14 @@
+substitutions:
+  device_name: mk114_2
+  use_address: 192.168.240.147
+
+esphome:
+  name: ${device_name}
+  platform: ESP32
+  board: nodemcu-32s
+
+<<: !include includes/common.yaml
+
+<<: !include includes/ble_tracker.yaml
+
+<<: !include includes/mk114.yaml
