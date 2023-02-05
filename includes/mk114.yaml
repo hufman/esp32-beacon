@@ -1,16 +1,27 @@
 globals:
+  - id: toggle_animation
+    type: bool
+    restore_value: no
+    initial_value: 'true'
+    # it seems that switch.on_turn_off happens on boot
+    # so ignore the first toggle_animation
   - id: user_brightness
     type: float
-    restore_value: no
+    restore_value: yes
   - id: user_red
     type: float
-    restore_value: no
+    restore_value: yes
   - id: user_green
     type: float
-    restore_value: no
+    restore_value: yes
   - id: user_blue
     type: float
+    restore_value: yes
+
+  - id: ruuvi_z
+    type: float
     restore_value: no
+
 # Hook up the button
 binary_sensor:
   - platform: gpio
@@ -20,6 +31,62 @@ binary_sensor:
       then:
         - switch.toggle: relay
 
+script:
+  - id: flash_color
+    mode: restart
+    parameters:
+      flash_r: float
+      flash_g: float
+      flash_b: float
+    then:
+      # don't save transition_color to the user_color
+      - if:
+          condition:
+            lambda: |-
+              return !(id(toggle_animation));
+          then:
+            - logger.log: "Saving user color"
+            # save the previous color
+            - globals.set:
+                id: user_brightness
+                value: !lambda 'return id(color).remote_values.is_on() ? id(color).remote_values.get_brightness() : 0;'
+            - globals.set:
+                id: user_red
+                value: !lambda 'return id(color).remote_values.get_red();'
+            - globals.set:
+                id: user_green
+                value: !lambda 'return id(color).remote_values.get_green();'
+            - globals.set:
+                id: user_blue
+                value: !lambda 'return id(color).remote_values.get_blue();'
+          else:
+            - logger.log: "Not saving user color"
+      - globals.set:
+          id: toggle_animation
+          value: 'true'
+      # set color
+      - light.turn_on:
+          id: color
+          #flash_length: 2000ms
+          transition_length: 600ms
+          brightness: 0.7
+          red: !lambda return flash_r;
+          green: !lambda return flash_g;
+          blue: !lambda return flash_b;
+      - delay: 2s
+      # restore the previous color
+      - light.turn_on:
+          id: color
+          #flash_length: 2000ms
+          transition_length: 1500ms
+          brightness: !lambda 'return id(user_brightness);'
+          red: !lambda 'return id(user_red);'
+          green: !lambda 'return id(user_green);'
+          blue: !lambda 'return id(user_blue);'
+      - globals.set:
+          id: toggle_animation
+          value: 'false'
+
 switch:
   - platform: gpio
     id: relay
@@ -27,106 +94,18 @@ switch:
     pin: GPIO25
     on_turn_on:
       then:
-        # don't save user_color to the transition color
-        - if:
-            condition: 
-              lambda: |-
-                return !(id(color).remote_values.get_red() == 0 &&
-                        id(color).remote_values.get_green() == 1 &&
-                        id(color).remote_values.get_blue() - 0.2 < 0.01) &&
-                       !(id(color).remote_values.get_red() == 1 &&
-                        id(color).remote_values.get_green() == 0 &&
-                        id(color).remote_values.get_blue() - 0.2 < 0.01);
-            then:
-              # save the previous color
-              - globals.set:
-                  id: user_brightness
-                  value: !lambda 'return id(color).remote_values.get_brightness();'
-              - globals.set:
-                  id: user_red
-                  value: !lambda 'return id(color).remote_values.get_red();'
-              - globals.set:
-                  id: user_green
-                  value: !lambda 'return id(color).remote_values.get_green();'
-              - globals.set:
-                  id: user_blue
-                  value: !lambda 'return id(color).remote_values.get_blue();'
-        # set color
-        - light.turn_on:
-            id: color
-            #flash_length: 2000ms
-            transition_length: 600ms
-            brightness: 0.7
-            red: 0
-            green: 1
-            blue: 0.2
-        - delay: 2s
-        # restore the previous color, but only if it hasn't changed
-        - if:
-            condition: 
-              lambda: |-
-                return (id(color).remote_values.get_red() == 0 &&
-                        id(color).remote_values.get_green() == 1);
-            then:
-              - light.turn_on:
-                  id: color
-                  #flash_length: 2000ms
-                  transition_length: 1500ms
-                  brightness: !lambda 'return id(user_brightness);'
-                  red: !lambda 'return id(user_red);'
-                  green: !lambda 'return id(user_green);'
-                  blue: !lambda 'return id(user_blue);'
+      - script.execute:
+          id: flash_color
+          flash_r: 0
+          flash_g: 1
+          flash_b: 0.2
     on_turn_off:
       then:
-        # don't save user_color to the transition color
-        - if:
-            condition: 
-              lambda: |-
-                return !(id(color).remote_values.get_red() == 0 &&
-                        id(color).remote_values.get_green() == 1 &&
-                        id(color).remote_values.get_blue() - 0.2 < 0.01) &&
-                       !(id(color).remote_values.get_red() == 1 &&
-                        id(color).remote_values.get_green() == 0 &&
-                        id(color).remote_values.get_blue() - 0.2 < 0.01);
-            then:
-              # save the previous color
-              - globals.set:
-                  id: user_brightness
-                  value: !lambda 'return id(color).remote_values.get_brightness();'
-              - globals.set:
-                  id: user_red
-                  value: !lambda 'return id(color).remote_values.get_red();'
-              - globals.set:
-                  id: user_green
-                  value: !lambda 'return id(color).remote_values.get_green();'
-              - globals.set:
-                  id: user_blue
-                  value: !lambda 'return id(color).remote_values.get_blue();'
-        # set color
-        - light.turn_on:
-            id: color
-            #flash_length: 2000ms
-            transition_length: 400ms
-            brightness: 0.6
-            red: 1
-            green: 0
-            blue: 0.2
-        - delay: 2s
-        # restore the previous color, but only if it hasn't changed
-        - if:
-            condition: 
-              lambda: |-
-                return (id(color).remote_values.get_red() == 1 &&
-                        id(color).remote_values.get_green() == 0);
-            then:
-              - light.turn_on:
-                  id: color
-                  #flash_length: 2000ms
-                  transition_length: 1500ms
-                  brightness: !lambda 'return id(user_brightness);'
-                  red: !lambda 'return id(user_red);'
-                  green: !lambda 'return id(user_green);'
-                  blue: !lambda 'return id(user_blue);'
+      - script.execute:
+          id: flash_color
+          flash_r: 1
+          flash_g: 0
+          flash_b: 0.2
 
 output:
   - platform: ledc

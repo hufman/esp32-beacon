@@ -3,3 +3,4 @@ mqtt:
   username: !secret mqtt_username
   password: !secret mqtt_password
   discovery: true
+  topic_prefix: "esp32-beacon/${device_name}"
