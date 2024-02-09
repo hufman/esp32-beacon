@@ -7,8 +7,7 @@ esphome:
   platform: ESP32
   board: nodemcu-32s
 
-<<: !include includes/common.yaml
-
-<<: !include includes/ble_tracker.yaml
-
-<<: !include includes/mk114.yaml
+packages:
+  common: !include includes/common.yaml
+  mk114: !include includes/mk114.yaml
+  ble_tracker: !include includes/ble_tracker.yaml
